@@ -1,4 +1,32 @@
 var TicTacToe = (function() {
+  // ----------------
+  // HELPER FUNCTIONS
+  // ----------------
+  var transpose = function(array) {
+    new_array = [];
+
+    for(var i = 0; i < array.length; i++) {
+      new_array.push([]);
+
+      for(var j = 0; j < array[i].length; j++) {
+        new_array[i][j] = array[j][i];
+      }
+    }
+
+    return new_array;
+  };
+
+  // -------
+  // CLASSES
+  // -------
+
+  // *** Board ***
+  // contains:
+  // gameboard
+  // placeToken(row, col, token)
+  // validateMove(row, col)
+  // render()
+  // gameOver()
   function Board(element) {
     var that = this;
 
@@ -49,20 +77,6 @@ var TicTacToe = (function() {
     };
 
     that.gameOver = function() {
-      var transpose = function(array) {
-        new_array = [];
-
-        for(var i = 0; i < array.length; i++) {
-          new_array.push([]);
-
-          for(var j = 0; j < array[i].length; j++) {
-            new_array[i][j] = array[j][i];
-          }
-        }
-
-        return new_array;
-      };
-
       var horizontalWin = function(board) {
         for(var i = 0; i < board.length; i++) {
           if((board[i].join() === 'X,X,X') || (board[i].join() === "O,O,O")) {
@@ -90,6 +104,9 @@ var TicTacToe = (function() {
     };
   }
 
+  // *** Computer ***
+  // contains:
+  // getMove(gameboard)
   function Computer() {
     var that = this;
 
@@ -100,24 +117,164 @@ var TicTacToe = (function() {
       // the solved strategy instead.
       // Reference: http://en.wikipedia.org/wiki/Tic-tac-toe#Strategy
 
-      // Set up some helper functions:
+      // Helper Functions
+      // ^^^^^^^^^^^^^^^^
+
+      var findFreeSideCenter = function() {
+        var midSides = [[0,1],[1,0],[1,2],[2,1]];
+
+        for(var i = 0; i < midSides.length; i++) {
+          var pos = midSides[i];
+
+          if(gameboard.gameboard[pos[0]][pos[1]] === " ") {
+            return pos;
+          }
+        }
+
+        return undefined;
+      };
+
+      var findFreeCorner = function() {
+        var corners = [[0,0],[0,2],[2,0],[2,2]];
+
+        for(var i = 0; i < corners.length; i++) {
+          var pos = corners[i];
+
+          if(gameboard.gameboard[pos[0]][pos[1]] === " ") {
+            return pos;
+          }
+        }
+
+        return undefined;
+      };
+
       var twoInRow = function(token) {
         // If two in row, returns third position to complete line
 
+        // check horizontal two-in-rows:
+        var possibleMove = twoInRowHelper(gameboard.gameboard, token);
+        if(possibleMove) {
+          return possibleMove;
+        }
 
+        // check vertical two-in-rows:
+        possibleMove = twoInRowHelper(transpose(gameboard.gameboard), token);
+        if(possibleMove) {
+          return [possibleMove[1], possibleMove[0]]; // undo the transpose
+        }
+
+        // check diagonal two-in-rows:
+        possibleMove = twoInRowDiagonal(gameboard.gameboard, token);
+        if(possibleMove) {
+          return possibleMove;
+        }
+
+        return undefined;
       };
 
-      var twoInRowHelper = function(token) {
-        
+      var twoInRowHelper = function(board, token) {
+        for(var i = 0; i < board.length; i++) {
+          var tokenCount = 0;
+          var blankCount = 0;
+          var blankPosition = [];
+
+          for(var j = 0; j < board[i].length; j++) {
+            if(board[i][j] === token) {
+              tokenCount++;
+            } else if(board[i][j] === ' ') {
+              blankCount++;
+              blankPosition = [i, j];
+            }
+          }
+
+          if(tokenCount === 2 && blankCount === 1) {
+            return blankPosition;
+          }
+        }
+
+        return undefined;
       };
+
+      var twoInRowDiagonal = function(board, token) {
+        var checkInDirection = function(board, token, direction) {
+          var tokenCount = 0;
+          var blankCount = 0;
+          var blankPosition = [];
+
+          for(var i = 0; i < board.length; i++) {
+            var j;
+
+            if(direction === 'leftright') {
+              j = i;
+            } else {
+              j = 2 - i;
+            }
+
+            if(board[i][j] === token) {
+              tokenCount++;
+            } else if(board[i][j] === ' ') {
+              blankCount++;
+              blankPosition = [i, j];
+            }
+          }
+          
+          if(tokenCount === 2 && blankCount === 1) {
+            return blankPosition;
+          } else {
+            return undefined;
+          }
+        };
+
+        var possibleMove = checkInDirection(board, token, 'leftright');
+        if(possibleMove) {
+          return possibleMove;
+        }
+
+        possibleMove = checkInDirection(board, token, 'rightleft');
+        if(possibleMove) {
+          return possibleMove;
+        }
+
+        return undefined;
+      };
+
+      // Game Strategy
+      // ^^^^^^^^^^^^^
+
+      var move = [];
 
       // Check to see if there is a winning move:
+      move = twoInRow("O");
+      if(move) { return move; }
 
+      // Check to see if a block must be made:
+      move = twoInRow("X");
+      if(move) { return move; }
 
-      return [row, col];
+      // Play the center if possible
+      if(gameboard.gameboard[1][1] === ' ') { return [1,1]; }
+
+      // If center is occupied by an opponent, play a corner if possible
+      if(gameboard.gameboard[1][1] === 'X') { 
+        move = findFreeCorner();
+        if(move) { return move; } 
+      }
+
+      // Play a side if possible
+      move = findFreeSideCenter();
+      if(move) { return move; }
+
+      // Pick at random:
+      return [Math.floor(Math.random() * 3), Math.floor(Math.random() * 3)];
     };
   }
 
+  // *** Game ***
+  // contains:
+  // computer
+  // gameboard
+  // move(row, col)
+  // executeComputerMove()
   function Game(element) {
     var that = this;
 
