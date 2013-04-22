@@ -119,6 +119,9 @@ var TicTacToe = (function() {
 
       // Helper Functions
       // ^^^^^^^^^^^^^^^^
+      var oppositeCorner = function(corner) {
+        return [Math.abs(2 - corner[0]), Math.abs(2 - corner[1])];
+      };
 
       var findFreeSideCenter = function() {
         var midSides = [[0,1],[1,0],[1,2],[2,1]];
@@ -217,7 +220,7 @@ var TicTacToe = (function() {
               blankPosition = [i, j];
             }
           }
-          
+
           if(tokenCount === 2 && blankCount === 1) {
             return blankPosition;
           } else {
@@ -238,6 +241,38 @@ var TicTacToe = (function() {
         return undefined;
       };
 
+      var isFork = function() {
+        var corners = [[0,0],[0,2],[2,0],[2,2]];
+
+        for(var i = 0; i < corners.length; i++) {
+          var corner = corners[i];
+          var token = gameboard.gameboard[corner[0]][corner[1]];
+
+          if(token === 'X') {
+            var row1 = Math.abs(1 - corner[0]);
+            var col1 = Math.abs(2 - corner[0]);
+            var row2 = Math.abs(2 - corner[0]);
+            var col2 = Math.abs(1 - corner[0]);
+
+            if(gameboard.gameboard[row1][col1] === 'X') {
+              var oC = oppositeCorner(corner);
+              if(gameboard.gameboard[oC[0]][oC[1]] === " ") {
+                return oppositeCorner(corner);
+              }
+            }
+
+            if(gameboard.gameboard[row2][col2] === 'X') {
+              var oC = oppositeCorner(corner);
+              if(gameboard.gameboard[oC[0]][oC[1]] === " ") {
+                return oppositeCorner(corner);
+              }
+            }
+          }
+        }
+
+        return undefined;
+      };
+
       // Game Strategy
       // ^^^^^^^^^^^^^
 
@@ -251,13 +286,17 @@ var TicTacToe = (function() {
       move = twoInRow("X");
       if(move) { return move; }
 
+      // Prevent a fork:
+      move = isFork();
+      if(move) { return move; }
+
       // Play the center if possible
       if(gameboard.gameboard[1][1] === ' ') { return [1,1]; }
 
       // If center is occupied by an opponent, play a corner if possible
-      if(gameboard.gameboard[1][1] === 'X') { 
+      if(gameboard.gameboard[1][1] === 'X') {
         move = findFreeCorner();
-        if(move) { return move; } 
+        if(move) { return move; }
       }
 
       // Play a side if possible
